@@ -1,7 +1,7 @@
 # Личный проект «Шесть городов»
 
 * Студент: [Неопознанный енот](https://up.htmlacademy.ru/univer-js3/6/user/2678375).
-* Наставник: [Артем Хрушков](https://htmlacademy.ru/profile/id98923).
+* Наставник: [Артём Хрушков](https://htmlacademy.ru/profile/id98923).
 
 ---
 
