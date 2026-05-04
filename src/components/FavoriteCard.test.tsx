@@ -103,7 +103,7 @@ describe('FavoriteCard component', () => {
 
     const ratingStars = screen.getByText('Rating').parentElement;
     const ratingSpan = ratingStars?.querySelector('span');
-    expect(ratingSpan).toHaveStyle({ width: '76%' });
+    expect(ratingSpan).toHaveStyle({ width: '80%' });
   });
 
   it('should have link to offer page', () => {

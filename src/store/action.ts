@@ -3,6 +3,7 @@ import { AxiosInstance } from 'axios';
 import { AppDispatch, RootState } from './index';
 import { Offer } from '../types/offer';
 import { User } from '../types/user';
+import { Review, ReviewPostData } from '../types/review';
 import { AuthorizationStatus } from '../const';
 import { TOKEN_KEY } from '../services/api';
 
@@ -91,4 +92,65 @@ export const fetchFavoriteOffersAction = () =>
     });
 
     dispatch(loadOffers(updatedOffers));
+  };
+
+export const fetchOfferAction = (offerId: string) =>
+  async (dispatch: AppDispatch, _getState: () => RootState, api: AxiosInstance) => {
+    try {
+      const { data } = await api.get<Offer>(`/offers/${offerId}`);
+      const state = _getState();
+      const currentOffers = state.offers.offers;
+      const existingIndex = currentOffers.findIndex((o) => o.id === offerId);
+      const isAuth = state.user.authorizationStatus === AuthorizationStatus.Auth;
+
+      let isFavorite = data.isFavorite;
+
+      if (isAuth) {
+        try {
+          const favoriteData = await api.get<Offer[]>('/favorite');
+          const favoriteOffer = favoriteData.data.find((o) => o.id === offerId);
+          if (favoriteOffer) {
+            isFavorite = true;
+          }
+        } catch {
+          if (existingIndex !== -1) {
+            isFavorite = currentOffers[existingIndex].isFavorite;
+          }
+        }
+      } else if (existingIndex !== -1) {
+        isFavorite = currentOffers[existingIndex].isFavorite;
+      }
+
+      if (existingIndex !== -1) {
+        const updatedData = { ...data, isFavorite };
+        dispatch(updateOffer(updatedData));
+      } else {
+        const offerWithFavorite = { ...data, isFavorite };
+        dispatch(loadOffers([...currentOffers, offerWithFavorite]));
+      }
+    } catch (error) {
+      // Ошибка загрузки предложения
+    }
+  };
+
+export const loadReviews = createAction<Review[]>('reviews/loadReviews');
+export const setReviewsDataLoading = createAction<boolean>('reviews/setReviewsDataLoading');
+
+export const fetchReviewsAction = (offerId: string) =>
+  async (dispatch: AppDispatch, _getState: () => RootState, api: AxiosInstance) => {
+    dispatch(setReviewsDataLoading(true));
+    try {
+      const { data } = await api.get<Review[]>(`/comments/${offerId}`);
+      dispatch(loadReviews(data));
+    } catch (error) {
+      dispatch(loadReviews([]));
+    } finally {
+      dispatch(setReviewsDataLoading(false));
+    }
+  };
+
+export const postReviewAction = (offerId: string, reviewData: ReviewPostData) =>
+  async (dispatch: AppDispatch, _getState: () => RootState, api: AxiosInstance) => {
+    await api.post<Review>(`/comments/${offerId}`, reviewData);
+    dispatch(fetchReviewsAction(offerId));
   };

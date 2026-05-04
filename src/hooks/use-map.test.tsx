@@ -3,16 +3,26 @@ import { renderHook } from '@testing-library/react';
 import useMap from './use-map';
 import { City } from '../types/types';
 
-// Mock Leaflet
-const mockMapInstance = {
-  setView: vi.fn(),
-  addLayer: vi.fn(),
-  removeLayer: vi.fn(),
-};
+const {
+  mockMapInstance,
+  mockMap,
+  mockTileLayerConstructor,
+} = vi.hoisted(() => {
+  const mockMapInstanceLocal = {
+    setView: vi.fn(),
+    addLayer: vi.fn(),
+    removeLayer: vi.fn(),
+  };
 
-const mockTileLayer = vi.fn();
-const mockMap = vi.fn().mockImplementation(() => mockMapInstance);
-const mockTileLayerConstructor = vi.fn().mockImplementation(() => mockTileLayer);
+  const mockMapLocal = vi.fn().mockImplementation(() => mockMapInstanceLocal);
+  const mockTileLayerConstructorLocal = vi.fn();
+
+  return {
+    mockMapInstance: mockMapInstanceLocal,
+    mockMap: mockMapLocal,
+    mockTileLayerConstructor: mockTileLayerConstructorLocal,
+  };
+});
 
 vi.mock('leaflet', () => ({
   Map: mockMap,
@@ -115,4 +125,3 @@ describe('useMap hook', () => {
     );
   });
 });
-

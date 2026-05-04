@@ -10,7 +10,7 @@ export type cardProps = {
 }
 
 function OfferCardComponent({ offer, onMouseEnter, onMouseLeave, onFavoriteClick }: cardProps): JSX.Element {
-  const ratingWidth = useMemo(() => `${Math.round(offer.rating * 20)}%`, [offer.rating]);
+  const ratingWidth = useMemo(() => `${Math.round(offer.rating) * 20}%`, [offer.rating]);
 
   return (
     <article className="cities__card place-card"

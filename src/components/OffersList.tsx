@@ -1,29 +1,22 @@
-import { useCallback } from 'react';
 import OfferCard from './OfferCard';
 import { Offer } from '../types/offer';
 
 interface OffersListProps {
   offers: Offer[];
   onFavoriteClick?: (offerId: string) => void;
+  onCardMouseEnter?: (offerId: string) => void;
+  onCardMouseLeave?: () => void;
 }
 
-function OffersList({ offers, onFavoriteClick }: OffersListProps): JSX.Element {
-  const handleMouseEnter = useCallback(() => {
-    // activeCard будет использоваться для выделения точки на карте
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    // activeCard будет использоваться для выделения точки на карте
-  }, []);
-
+function OffersList({ offers, onFavoriteClick, onCardMouseEnter, onCardMouseLeave }: OffersListProps): JSX.Element {
   return (
     <div className="cities__places-list places__list tabs__content">
       {offers.map((offer) => (
         <OfferCard
           key={offer.id}
           offer={offer}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
+          onMouseEnter={() => onCardMouseEnter?.(offer.id)}
+          onMouseLeave={onCardMouseLeave}
           onFavoriteClick={onFavoriteClick}
         />
       ))}

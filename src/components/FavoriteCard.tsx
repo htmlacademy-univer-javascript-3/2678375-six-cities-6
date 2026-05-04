@@ -8,7 +8,7 @@ interface FavoriteCardProps {
 }
 
 function FavoriteCardComponent({ offer, onFavoriteClick }: FavoriteCardProps): JSX.Element {
-  const ratingWidth = useMemo(() => `${Math.round(offer.rating * 20)}%`, [offer.rating]);
+  const ratingWidth = useMemo(() => `${Math.round(offer.rating) * 20}%`, [offer.rating]);
 
   return (
     <article className="favorites__card place-card">

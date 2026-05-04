@@ -210,7 +210,7 @@ describe('OfferCard component', () => {
 
     const ratingStars = screen.getByText('Rating').parentElement;
     const ratingSpan = ratingStars?.querySelector('span');
-    expect(ratingSpan).toHaveStyle({ width: '90%' });
+    expect(ratingSpan).toHaveStyle({ width: '100%' });
   });
 
   it('should have link to offer page', () => {

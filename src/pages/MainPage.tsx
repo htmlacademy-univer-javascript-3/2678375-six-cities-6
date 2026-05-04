@@ -4,7 +4,7 @@
  */
 
 import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { AppRoute } from '../const';
 import OffersList from '../components/OffersList';
@@ -12,7 +12,7 @@ import Map from '../components/Map';
 import Spinner from '../components/Spinner';
 import ErrorMessage from '../components/ErrorMessage';
 import EmptyMainContent from '../components/EmptyMainContent';
-import { City, Points } from '../types/types';
+import { City, Points, Point } from '../types/types';
 import { Offer } from '../types/offer';
 import { AppDispatch } from '../store';
 import { changeCity, fetchOffersAction, logoutAction, toggleFavoriteAction } from '../store/action';
@@ -30,6 +30,8 @@ import {
 
 const CITIES = ['Paris', 'Cologne', 'Brussels', 'Amsterdam', 'Hamburg', 'Dusseldorf'];
 
+type SortType = 'Popular' | 'Price: low to high' | 'Price: high to low' | 'Top rated first';
+
 function MainPage(): JSX.Element {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
@@ -41,23 +43,42 @@ function MainPage(): JSX.Element {
   const user = useSelector(getUser);
   const favoriteOffersCount = useSelector(getFavoriteOffersCount);
 
-  const cityCoordinates: City = useMemo(() => filteredOffers[0]
+  const [sortType, setSortType] = useState<SortType>('Popular');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [selectedPoint, setSelectedPoint] = useState<Point | undefined>(undefined);
+
+  const sortedOffers = useMemo(() => {
+    const offers = [...filteredOffers];
+    switch (sortType) {
+      case 'Price: low to high':
+        return offers.sort((a, b) => a.price - b.price);
+      case 'Price: high to low':
+        return offers.sort((a, b) => b.price - a.price);
+      case 'Top rated first':
+        return offers.sort((a, b) => b.rating - a.rating);
+      case 'Popular':
+      default:
+        return offers;
+    }
+  }, [filteredOffers, sortType]);
+
+  const cityCoordinates: City = useMemo(() => sortedOffers[0]
     ? {
-      lat: filteredOffers[0].city.location.latitude,
-      lng: filteredOffers[0].city.location.longitude,
-      zoom: filteredOffers[0].city.location.zoom,
+      lat: sortedOffers[0].city.location.latitude,
+      lng: sortedOffers[0].city.location.longitude,
+      zoom: sortedOffers[0].city.location.zoom,
     }
     : {
       lat: 52.38333,
       lng: 4.9,
       zoom: 10,
-    }, [filteredOffers]);
+    }, [sortedOffers]);
 
-  const points: Points = useMemo(() => filteredOffers.map((offer: Offer) => ({
+  const points: Points = useMemo(() => sortedOffers.map((offer: Offer) => ({
     lat: offer.location.latitude,
     lng: offer.location.longitude,
     title: offer.title,
-  })), [filteredOffers]);
+  })), [sortedOffers]);
 
   useEffect(() => {
     dispatch(fetchOffersAction());
@@ -77,11 +98,39 @@ function MainPage(): JSX.Element {
       return;
     }
 
-    const offer = filteredOffers.find((o) => o.id === offerId);
+    const offer = sortedOffers.find((o) => o.id === offerId);
     if (offer) {
       dispatch(toggleFavoriteAction(offerId, !offer.isFavorite));
     }
-  }, [dispatch, navigate, authorizationStatus, filteredOffers]);
+  }, [dispatch, navigate, authorizationStatus, sortedOffers]);
+
+  const handleSortTypeChange = useCallback((newSortType: SortType) => {
+    setSortType(newSortType);
+    setIsSortMenuOpen(false);
+  }, []);
+
+  const handleSortMenuToggle = useCallback(() => {
+    setIsSortMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleSortMenuClose = useCallback(() => {
+    setIsSortMenuOpen(false);
+  }, []);
+
+  const handleCardMouseEnter = useCallback((offerId: string) => {
+    const offer = sortedOffers.find((o) => o.id === offerId);
+    if (offer) {
+      setSelectedPoint({
+        lat: offer.location.latitude,
+        lng: offer.location.longitude,
+        title: offer.title,
+      });
+    }
+  }, [sortedOffers]);
+
+  const handleCardMouseLeave = useCallback(() => {
+    setSelectedPoint(undefined);
+  }, []);
 
   return (
     <div className="page page--gray page--main">
@@ -136,8 +185,8 @@ function MainPage(): JSX.Element {
           onCityChange={handleCityChange}
         />
         <div className="cities">
-          <div className={`cities__places-container ${!offersDataError && !isOffersDataLoading && filteredOffers.length === 0 ? 'cities__places-container--empty' : ''} container`}>
-            {!offersDataError && !isOffersDataLoading && filteredOffers.length === 0 ? (
+          <div className={`cities__places-container ${!offersDataError && !isOffersDataLoading && sortedOffers.length === 0 ? 'cities__places-container--empty' : ''} container`}>
+            {!offersDataError && !isOffersDataLoading && sortedOffers.length === 0 ? (
               <EmptyMainContent city={selectedCity} />
             ) : (
               <section className="cities__places places">
@@ -151,34 +200,80 @@ function MainPage(): JSX.Element {
                 {!offersDataError && !isOffersDataLoading && (
                   <>
                     <b className="places__found">
-                      {filteredOffers.length} places to stay in {selectedCity}
+                      {sortedOffers.length} places to stay in {selectedCity}
                     </b>
                     <form className="places__sorting" action="#" method="get">
                       <span className="places__sorting-caption">Sort by</span>
-                      <span className="places__sorting-type" tabIndex={0}>
-                        Popular
+                      <span
+                        className="places__sorting-type"
+                        tabIndex={0}
+                        onClick={handleSortMenuToggle}
+                        onBlur={handleSortMenuClose}
+                      >
+                        {sortType}
                         <svg className="places__sorting-arrow" width="7" height="4">
                           <use href="#icon-arrow-select"></use>
                         </svg>
                       </span>
-                      <ul className="places__options places__options--custom places__options--opened">
-                        <li className="places__option places__option--active" tabIndex={0}>Popular</li>
-                        <li className="places__option" tabIndex={0}>Price: low to high</li>
-                        <li className="places__option" tabIndex={0}>Price: high to low</li>
-                        <li className="places__option" tabIndex={0}>Top rated first</li>
+                      <ul className={`places__options places__options--custom ${isSortMenuOpen ? 'places__options--opened' : ''}`}>
+                        <li
+                          className={`places__option ${sortType === 'Popular' ? 'places__option--active' : ''}`}
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSortTypeChange('Popular');
+                          }}
+                        >
+                          Popular
+                        </li>
+                        <li
+                          className={`places__option ${sortType === 'Price: low to high' ? 'places__option--active' : ''}`}
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSortTypeChange('Price: low to high');
+                          }}
+                        >
+                          Price: low to high
+                        </li>
+                        <li
+                          className={`places__option ${sortType === 'Price: high to low' ? 'places__option--active' : ''}`}
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSortTypeChange('Price: high to low');
+                          }}
+                        >
+                          Price: high to low
+                        </li>
+                        <li
+                          className={`places__option ${sortType === 'Top rated first' ? 'places__option--active' : ''}`}
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSortTypeChange('Top rated first');
+                          }}
+                        >
+                          Top rated first
+                        </li>
                       </ul>
                     </form>
-                    <OffersList offers={filteredOffers} onFavoriteClick={handleFavoriteClick} />
+                    <OffersList
+                      offers={sortedOffers}
+                      onFavoriteClick={handleFavoriteClick}
+                      onCardMouseEnter={handleCardMouseEnter}
+                      onCardMouseLeave={handleCardMouseLeave}
+                    />
                   </>
                 )}
               </section>
             )}
-            {(!offersDataError && !isOffersDataLoading && filteredOffers.length > 0) && (
+            {(!offersDataError && !isOffersDataLoading && sortedOffers.length > 0) && (
               <div className="cities__right-section">
                 <Map
                   city={cityCoordinates}
                   points={points}
-                  selectedPoint={undefined}
+                  selectedPoint={selectedPoint}
                 />
               </div>
             )}

@@ -2,11 +2,14 @@ import { useParams } from 'react-router-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { AppRoute, AuthorizationStatus } from '../const';
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import ReviewForm from '../components/ReviewForm';
-import { getAllOffers, getAuthorizationStatus, getUser, getFavoriteOffersCount } from '../store/selectors';
+import Map from '../components/Map';
+import Spinner from '../components/Spinner';
+import { getAllOffers, getAuthorizationStatus, getUser, getFavoriteOffersCount, getReviews } from '../store/selectors';
 import { AppDispatch } from '../store';
-import { toggleFavoriteAction, logoutAction } from '../store/action';
+import { toggleFavoriteAction, logoutAction, fetchReviewsAction, loadReviews, fetchOfferAction } from '../store/action';
+import { City, Points, Point } from '../types/types';
 
 function OfferPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -16,14 +19,43 @@ function OfferPage(): JSX.Element {
   const authorizationStatus = useSelector(getAuthorizationStatus);
   const user = useSelector(getUser);
   const favoriteOffersCount = useSelector(getFavoriteOffersCount);
+  const reviews = useSelector(getReviews);
+  const [isOfferLoading, setIsOfferLoading] = useState(true);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
   }, [id]);
 
+  useEffect(() => {
+    if (id) {
+      setIsOfferLoading(true);
+      dispatch(loadReviews([]));
+      dispatch(fetchReviewsAction(id));
+      dispatch(fetchOfferAction(id))
+        .finally(() => {
+          setIsOfferLoading(false);
+        });
+    }
+  }, [dispatch, id]);
+
   const offer = useMemo(() => allOffers.find((o) => o.id === id), [allOffers, id]);
 
-  const ratingWidth = useMemo(() => offer ? `${Math.round(offer.rating * 20)}%` : '0%', [offer]);
+  useEffect(() => {
+    if (offer) {
+      const nearOffersToLoad = allOffers
+        .filter((o) => o.city.name === offer.city.name && o.id !== offer.id)
+        .slice(0, 3)
+        .filter((o) => !o.previewImage || o.previewImage === '');
+
+      nearOffersToLoad.forEach((nearOffer) => {
+        dispatch(fetchOfferAction(nearOffer.id));
+      });
+    }
+  }, [dispatch, offer, allOffers]);
+
+  const hasFullData = offer && offer.images && offer.images.length > 0;
+
+  const ratingWidth = useMemo(() => offer ? `${Math.round(offer.rating) * 20}%` : '0%', [offer]);
 
   const nearOffers = useMemo(() => {
     if (!offer) {
@@ -33,6 +65,68 @@ function OfferPage(): JSX.Element {
       .filter((o) => o.city.name === offer.city.name && o.id !== offer.id)
       .slice(0, 3);
   }, [allOffers, offer]);
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+    return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const sortedReviews = useMemo(() => [...reviews]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 10), [reviews]);
+
+  const formatOfferType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      apartment: 'Apartment',
+      room: 'Room',
+      house: 'House',
+      hotel: 'Hotel',
+    };
+    return typeMap[type] || type;
+  };
+
+  const mapPoints: Points = useMemo(() => {
+    if (!offer) {
+      return [];
+    }
+    const allPoints: Point[] = [
+      {
+        lat: offer.location.latitude,
+        lng: offer.location.longitude,
+        title: offer.title,
+      },
+      ...nearOffers.map((nearOffer) => ({
+        lat: nearOffer.location.latitude,
+        lng: nearOffer.location.longitude,
+        title: nearOffer.title,
+      })),
+    ];
+    return allPoints;
+  }, [offer, nearOffers]);
+
+  const mapCity: City = useMemo(() => {
+    if (!offer) {
+      return { lat: 52.38333, lng: 4.9, zoom: 10 };
+    }
+    return {
+      lat: offer.city.location.latitude,
+      lng: offer.city.location.longitude,
+      zoom: offer.city.location.zoom,
+    };
+  }, [offer]);
+
+  const selectedPoint: Point | undefined = useMemo(() => {
+    if (!offer) {
+      return undefined;
+    }
+    return {
+      lat: offer.location.latitude,
+      lng: offer.location.longitude,
+      title: offer.title,
+    };
+  }, [offer]);
 
   const handleFavoriteClick = useCallback((offerId: string) => {
     if (authorizationStatus !== AuthorizationStatus.Auth) {
@@ -49,6 +143,58 @@ function OfferPage(): JSX.Element {
   const handleLogout = useCallback(() => {
     dispatch(logoutAction());
   }, [dispatch]);
+
+  if (isOfferLoading || !hasFullData) {
+    return (
+      <div className="page">
+        <header className="header">
+          <div className="container">
+            <div className="header__wrapper">
+              <div className="header__left">
+                <Link className="header__logo-link" to={AppRoute.Main}>
+                  <img className="header__logo" src="img/logo.svg" alt="6 cities logo" width="81" height="41" />
+                </Link>
+              </div>
+              <nav className="header__nav">
+                <ul className="header__nav-list">
+                  {authorizationStatus === AuthorizationStatus.Auth && user ? (
+                    <>
+                      <li className="header__nav-item user">
+                        <Link className="header__nav-link header__nav-link--profile" to={AppRoute.Favorites}>
+                          <div className="header__avatar-wrapper user__avatar-wrapper">
+                            <img className="header__avatar user__avatar" src={user.avatarUrl} alt={user.name} width="20" height="20" />
+                          </div>
+                          <span className="header__user-name user__name">{user.email}</span>
+                          <span className="header__favorite-count">{favoriteOffersCount}</span>
+                        </Link>
+                      </li>
+                      <li className="header__nav-item">
+                        <a className="header__nav-link" href="#" onClick={(e) => {
+                          e.preventDefault(); handleLogout();
+                        }}
+                        >
+                          <span className="header__signout">Sign out</span>
+                        </a>
+                      </li>
+                    </>
+                  ) : (
+                    <li className="header__nav-item">
+                      <Link className="header__nav-link" to={AppRoute.Login}>
+                        <span className="header__login">Sign in</span>
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              </nav>
+            </div>
+          </div>
+        </header>
+        <main className="page__main page__main--offer">
+          <Spinner />
+        </main>
+      </div>
+    );
+  }
 
   if (!offer) {
     return (
@@ -108,7 +254,7 @@ function OfferPage(): JSX.Element {
         <section className="offer">
           <div className="offer__gallery-container container">
             <div className="offer__gallery">
-              {offer.images && offer.images.map((image) => (
+              {offer.images && offer.images.slice(0, 6).map((image) => (
                 <div key={`${image}-${offer.id}`} className="offer__image-wrapper">
                   <img className="offer__image" src={image} alt="Photo studio" />
                 </div>
@@ -149,7 +295,7 @@ function OfferPage(): JSX.Element {
               </div>
               <ul className="offer__features">
                 <li className="offer__feature offer__feature--entire">
-                  {offer.type}
+                  {formatOfferType(offer.type)}
                 </li>
                 {offer.bedrooms !== undefined && (
                   <li className="offer__feature offer__feature--bedrooms">
@@ -198,43 +344,52 @@ function OfferPage(): JSX.Element {
                 </div>
               )}
               <section className="offer__reviews reviews">
-                <h2 className="reviews__title">Reviews &middot; <span className="reviews__amount">1</span></h2>
+                <h2 className="reviews__title">Reviews &middot; <span className="reviews__amount">{sortedReviews.length}</span></h2>
                 <ul className="reviews__list">
-                  <li className="reviews__item">
-                    <div className="reviews__user user">
-                      <div className="reviews__avatar-wrapper user__avatar-wrapper">
-                        <img className="reviews__avatar user__avatar" src="img/avatar-max.jpg" width="54" height="54" alt="Reviews avatar" />
-                      </div>
-                      <span className="reviews__user-name">
-                        Max
-                      </span>
-                    </div>
-                    <div className="reviews__info">
-                      <div className="reviews__rating rating">
-                        <div className="reviews__stars rating__stars">
-                          <span style={{ width: '80%' }}></span>
-                          <span className="visually-hidden">Rating</span>
+                  {sortedReviews.map((review) => {
+                    const reviewRatingWidth = `${Math.round(review.rating) * 20}%`;
+                    return (
+                      <li key={review.id} className="reviews__item">
+                        <div className="reviews__user user">
+                          <div className="reviews__avatar-wrapper user__avatar-wrapper">
+                            <img className="reviews__avatar user__avatar" src={review.user.avatarUrl} width="54" height="54" alt="Reviews avatar" />
+                          </div>
+                          <span className="reviews__user-name">
+                            {review.user.name}
+                          </span>
                         </div>
-                      </div>
-                      <p className="reviews__text">
-                        A quiet cozy and picturesque that hides behind a a river by the unique lightness of Amsterdam. The building is green and from 18th century.
-                      </p>
-                      <time className="reviews__time" dateTime="2019-04-24">April 2019</time>
-                    </div>
-                  </li>
+                        <div className="reviews__info">
+                          <div className="reviews__rating rating">
+                            <div className="reviews__stars rating__stars">
+                              <span style={{ width: reviewRatingWidth }}></span>
+                              <span className="visually-hidden">Rating</span>
+                            </div>
+                          </div>
+                          <p className="reviews__text">
+                            {review.comment}
+                          </p>
+                          <time className="reviews__time" dateTime={review.date}>{formatDate(review.date)}</time>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
-                <ReviewForm />
+                {authorizationStatus === AuthorizationStatus.Auth && <ReviewForm />}
               </section>
             </div>
           </div>
-          <section className="offer__map map"></section>
+          {mapPoints.length > 0 && (
+            <section className="offer__map map">
+              <Map city={mapCity} points={mapPoints} selectedPoint={selectedPoint} />
+            </section>
+          )}
         </section>
         <div className="container">
           <section className="near-places places">
             <h2 className="near-places__title">Other places in the neighbourhood</h2>
             <div className="near-places__list places__list">
               {nearOffers.map((nearOffer) => {
-                const nearRatingWidth = `${Math.round(nearOffer.rating * 20)}%`;
+                const nearRatingWidth = `${Math.round(nearOffer.rating) * 20}%`;
                 return (
                   <article key={nearOffer.id} className="near-places__card place-card">
                     {nearOffer.isPremium && (

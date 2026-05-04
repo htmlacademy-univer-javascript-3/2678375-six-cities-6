@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import OffersList from './OffersList';
 import { Offer } from '../types/offer';
 
@@ -36,7 +37,11 @@ describe('OffersList component', () => {
     ];
     const onFavoriteClick = vi.fn();
 
-    render(<OffersList offers={offers} onFavoriteClick={onFavoriteClick} />);
+    render(
+      <MemoryRouter>
+        <OffersList offers={offers} onFavoriteClick={onFavoriteClick} />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Offer 1')).toBeInTheDocument();
     expect(screen.getByText('Offer 2')).toBeInTheDocument();
@@ -52,7 +57,11 @@ describe('OffersList component', () => {
     ];
     const onFavoriteClick = vi.fn();
 
-    render(<OffersList offers={offers} onFavoriteClick={onFavoriteClick} />);
+    render(
+      <MemoryRouter>
+        <OffersList offers={offers} onFavoriteClick={onFavoriteClick} />
+      </MemoryRouter>
+    );
 
     const offerCards = screen.getAllByRole('article');
     expect(offerCards).toHaveLength(4);
@@ -65,7 +74,11 @@ describe('OffersList component', () => {
     ];
     const onFavoriteClick = vi.fn();
 
-    render(<OffersList offers={offers} onFavoriteClick={onFavoriteClick} />);
+    render(
+      <MemoryRouter>
+        <OffersList offers={offers} onFavoriteClick={onFavoriteClick} />
+      </MemoryRouter>
+    );
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });
 
@@ -73,7 +86,11 @@ describe('OffersList component', () => {
     const offers: Offer[] = [];
     const onFavoriteClick = vi.fn();
 
-    const { container } = render(<OffersList offers={offers} onFavoriteClick={onFavoriteClick} />);
+    const { container } = render(
+      <MemoryRouter>
+        <OffersList offers={offers} onFavoriteClick={onFavoriteClick} />
+      </MemoryRouter>
+    );
 
     expect(container.querySelector('.places__list')).toBeInTheDocument();
     expect(screen.queryAllByRole('article')).toHaveLength(0);
@@ -84,7 +101,11 @@ describe('OffersList component', () => {
       { ...mockOffer, id: '1', title: 'Offer 1' },
     ];
 
-    render(<OffersList offers={offers} />);
+    render(
+      <MemoryRouter>
+        <OffersList offers={offers} />
+      </MemoryRouter>
+    );
 
     expect(screen.getByText('Offer 1')).toBeInTheDocument();
   });

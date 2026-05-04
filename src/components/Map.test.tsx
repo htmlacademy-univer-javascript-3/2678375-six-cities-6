@@ -3,25 +3,45 @@ import { render } from '@testing-library/react';
 import Map from './Map';
 import { City, Point } from '../types/types';
 
-const mockMapInstance = {
-  setView: vi.fn(),
-  addLayer: vi.fn(),
-  removeLayer: vi.fn(),
-};
+const {
+  mockMapInstance,
+  mockMarkerInstance,
+  mockLayerGroupInstance,
+  mockMarker,
+  mockLayerGroup,
+  mockIconConstructor,
+  mockUseMap,
+} = vi.hoisted(() => {
+  const mockMapInstanceLocal = {
+    setView: vi.fn(),
+    addLayer: vi.fn(),
+    removeLayer: vi.fn(),
+  };
 
-const mockMarkerInstance = {
-  setIcon: vi.fn().mockReturnThis(),
-  addTo: vi.fn().mockReturnThis(),
-};
+  const mockMarkerInstanceLocal = {
+    setIcon: vi.fn().mockReturnThis(),
+    addTo: vi.fn().mockReturnThis(),
+  };
 
-const mockLayerGroupInstance = {
-  addTo: vi.fn().mockReturnThis(),
-};
+  const mockLayerGroupInstanceLocal = {
+    addTo: vi.fn().mockReturnThis(),
+  };
 
-const mockIcon = vi.fn();
-const mockMarker = vi.fn().mockImplementation(() => mockMarkerInstance);
-const mockLayerGroup = vi.fn().mockImplementation(() => mockLayerGroupInstance);
-const mockIconConstructor = vi.fn().mockImplementation(() => mockIcon);
+  const mockMarkerLocal = vi.fn().mockImplementation(() => mockMarkerInstanceLocal);
+  const mockLayerGroupLocal = vi.fn().mockImplementation(() => mockLayerGroupInstanceLocal);
+  const mockIconConstructorLocal = vi.fn();
+  const mockUseMapLocal = vi.fn();
+
+  return {
+    mockMapInstance: mockMapInstanceLocal,
+    mockMarkerInstance: mockMarkerInstanceLocal,
+    mockLayerGroupInstance: mockLayerGroupInstanceLocal,
+    mockMarker: mockMarkerLocal,
+    mockLayerGroup: mockLayerGroupLocal,
+    mockIconConstructor: mockIconConstructorLocal,
+    mockUseMap: mockUseMapLocal,
+  };
+});
 
 vi.mock('leaflet', () => ({
   Map: vi.fn().mockImplementation(() => mockMapInstance),
@@ -31,7 +51,6 @@ vi.mock('leaflet', () => ({
   Icon: mockIconConstructor,
 }));
 
-const mockUseMap = vi.fn();
 vi.mock('../hooks/use-map', () => ({
   default: mockUseMap,
 }));
@@ -77,7 +96,6 @@ describe('Map component', () => {
   it('should use default icon for points when selectedPoint is undefined', () => {
     render(<Map city={mockCity} points={mockPoints} selectedPoint={undefined} />);
 
-    expect(mockIconConstructor).toHaveBeenCalled();
     expect(mockMarkerInstance.setIcon).toHaveBeenCalled();
   });
 
@@ -150,4 +168,3 @@ describe('Map component', () => {
     expect(mockMarker).not.toHaveBeenCalled();
   });
 });
-

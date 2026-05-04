@@ -38,9 +38,13 @@ function Map(props: MapProps): JSX.Element {
           lng: point.lng
         });
 
+        const isSelected = selectedPoint !== undefined &&
+          point.lat === selectedPoint.lat &&
+          point.lng === selectedPoint.lng;
+
         marker
           .setIcon(
-            selectedPoint !== undefined && point.title === selectedPoint.title
+            isSelected
               ? currentCustomIcon
               : defaultCustomIcon
           )
@@ -53,7 +57,7 @@ function Map(props: MapProps): JSX.Element {
     }
   }, [map, points, selectedPoint]);
 
-  return <div className="cities__map map" ref={mapRef}></div>;
+  return <div style={{ height: '100%', width: '100%', minHeight: '500px' }} className="cities__map map" ref={mapRef}></div>;
 }
 
 export default Map;

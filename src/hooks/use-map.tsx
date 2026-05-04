@@ -36,10 +36,14 @@ function useMap(
 
   useEffect(() => {
     if (map) {
-      map.setView(
-        [city.lat, city.lng],
-        city.zoom ?? 10
-      );
+      try {
+        map.setView(
+          [city.lat, city.lng],
+          city.zoom ?? 10
+        );
+      } catch {
+        // Игнорируем ошибки, если карта уже удалена
+      }
     }
   }, [map, city]);
 
